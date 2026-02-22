@@ -1,14 +1,5 @@
 /* eslint-disable no-console */
-const WebSocket = require('ws');
-
-let keySender = null;
-try {
-  // Optional dependency. If unavailable, plugin still runs and logs warning.
-  // npm i node-key-sender
-  keySender = require('node-key-sender');
-} catch (_error) {
-  keySender = null;
-}
+const { exec } = require('child_process');
 
 const ACTION_UUID = 'com.example.bufftimer.action';
 const DEFAULTS = {
@@ -32,7 +23,6 @@ function parseArgs(argv) {
     if (argv[i] === '-port') args.port = argv[i + 1];
     if (argv[i] === '-pluginUUID') args.pluginUUID = argv[i + 1];
     if (argv[i] === '-registerEvent') args.registerEvent = argv[i + 1];
-    if (argv[i] === '-info') args.info = argv[i + 1];
   }
   return args;
 }
@@ -41,10 +31,10 @@ function mergeSettings(settings = {}) {
   return {
     ...DEFAULTS,
     ...settings,
-    timerBSeconds: Number(settings.timerBSeconds ?? DEFAULTS.timerBSeconds),
-    timerCSeconds: Number(settings.timerCSeconds ?? DEFAULTS.timerCSeconds),
-    blinkBHz: Number(settings.blinkBHz ?? DEFAULTS.blinkBHz),
-    blinkCHz: Number(settings.blinkCHz ?? DEFAULTS.blinkCHz),
+    timerBSeconds: Math.max(1, Number(settings.timerBSeconds ?? DEFAULTS.timerBSeconds)),
+    timerCSeconds: Math.max(1, Number(settings.timerCSeconds ?? DEFAULTS.timerCSeconds)),
+    blinkBHz: Math.min(3, Math.max(1, Number(settings.blinkBHz ?? DEFAULTS.blinkBHz))),
+    blinkCHz: Math.min(3, Math.max(1, Number(settings.blinkCHz ?? DEFAULTS.blinkCHz))),
     blinkBEnabled: Boolean(settings.blinkBEnabled ?? DEFAULTS.blinkBEnabled),
     blinkCEnabled: Boolean(settings.blinkCEnabled ?? DEFAULTS.blinkCEnabled)
   };
@@ -62,21 +52,79 @@ function setSettings(ws, context, settings) {
   send(ws, 'setSettings', { context, payload: settings });
 }
 
+function parseHotkey(hotkey) {
+  return hotkey
+    .split('+')
+    .map((part) => part.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function triggerHotkeyWindows(parts) {
+  if (!parts.length) return;
+
+  const modifierMap = {
+    ctrl: '^',
+    control: '^',
+    shift: '+',
+    alt: '%'
+  };
+
+  const keyMap = {
+    enter: '{ENTER}',
+    tab: '{TAB}',
+    esc: '{ESC}',
+    escape: '{ESC}',
+    space: ' '
+  };
+
+  const modifiers = parts.filter((p) => modifierMap[p]).map((p) => modifierMap[p]).join('');
+  const key = parts.find((p) => !modifierMap[p]) || '';
+  const keyToken = keyMap[key] || key.toUpperCase();
+  const sendKeys = `${modifiers}${keyToken}`;
+
+  const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${sendKeys}')"`;
+  exec(cmd, (error) => {
+    if (error) console.error('Hotkey konnte unter Windows nicht gesendet werden:', error.message);
+  });
+}
+
+function triggerHotkeyMac(parts) {
+  if (!parts.length) return;
+
+  const modifierMap = {
+    ctrl: 'control down',
+    control: 'control down',
+    shift: 'shift down',
+    alt: 'option down',
+    option: 'option down',
+    cmd: 'command down',
+    command: 'command down'
+  };
+
+  const key = parts.find((p) => !modifierMap[p]) || '';
+  const modifiers = parts.filter((p) => modifierMap[p]).map((p) => modifierMap[p]).join(', ');
+  const usingPart = modifiers ? ` using {${modifiers}}` : '';
+  const cmd = `osascript -e 'tell application "System Events" to keystroke "${key}"${usingPart}'`;
+  exec(cmd, (error) => {
+    if (error) console.error('Hotkey konnte unter macOS nicht gesendet werden:', error.message);
+  });
+}
+
 function triggerHotkey(hotkey) {
-  if (!keySender) {
-    console.warn(`Hotkey "${hotkey}" nicht ausgelöst: optionales Paket node-key-sender fehlt.`);
+  const parts = parseHotkey(hotkey);
+  if (!parts.length) return;
+
+  if (process.platform === 'win32') {
+    triggerHotkeyWindows(parts);
     return;
   }
 
-  const parts = hotkey
-    .split('+')
-    .map((p) => p.trim().toLowerCase())
-    .filter(Boolean);
+  if (process.platform === 'darwin') {
+    triggerHotkeyMac(parts);
+    return;
+  }
 
-  if (parts.length === 0) return;
-  keySender.sendCombination(parts).catch((error) => {
-    console.error('Hotkey konnte nicht gesendet werden:', error.message);
-  });
+  console.warn(`Hotkey auf Plattform ${process.platform} nicht implementiert.`);
 }
 
 function clearRuntime(entry) {
@@ -132,7 +180,7 @@ function restartCycle(ws, entry) {
 }
 
 function handleWillAppear(ws, message) {
-  const settings = mergeSettings(message.payload.settings);
+  const settings = mergeSettings((message.payload && message.payload.settings) || {});
   const entry = {
     context: message.context,
     settings,
@@ -157,7 +205,7 @@ function handleDidReceiveSettings(ws, message) {
   const entry = contexts.get(message.context);
   if (!entry) return;
 
-  entry.settings = mergeSettings(message.payload.settings);
+  entry.settings = mergeSettings((message.payload && message.payload.settings) || {});
   if (entry.phase === 'A') {
     setImage(ws, entry.context, entry.settings.iconA);
   }
@@ -172,13 +220,12 @@ function handleKeyDown(ws, message) {
 function connectElgatoStreamDeckSocket(port, pluginUUID, registerEvent) {
   const ws = new WebSocket(`ws://127.0.0.1:${port}`);
 
-  ws.on('open', () => {
+  ws.onopen = () => {
     send(ws, registerEvent, { uuid: pluginUUID });
-  });
+  };
 
-  ws.on('message', (raw) => {
-    const message = JSON.parse(raw.toString());
-
+  ws.onmessage = (raw) => {
+    const message = JSON.parse(raw.data || raw);
     if (message.action !== ACTION_UUID) return;
 
     switch (message.event) {
@@ -197,12 +244,12 @@ function connectElgatoStreamDeckSocket(port, pluginUUID, registerEvent) {
       default:
         break;
     }
-  });
+  };
 
-  ws.on('close', () => {
+  ws.onclose = () => {
     contexts.forEach((entry) => clearRuntime(entry));
     contexts.clear();
-  });
+  };
 }
 
 const args = parseArgs(process.argv);

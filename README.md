@@ -1,12 +1,20 @@
-# Buff Timer Stream Deck Plugin (Prototype)
+# Buff Timer Stream Deck Plugin
 
-Dieses Repository enthält ein Beispiel-Plugin für die Stream-Deck-Plugin-API (SDK v2), das den von dir beschriebenen Zyklus **A → B → C → D** abbildet:
+Dieses Plugin bildet den gewünschten Zyklus **A → B → C → D(=zurück zu A)** für eine frei platzierbare Stream‑Deck‑Taste ab.
 
-- **A:** Statisches Icon, wartet auf Tastendruck.
-- **Tastendruck in A/B/C:** Hotkey wird **einmalig** ausgelöst, Zyklus startet neu bei B.
-- **B:** Icon B statisch oder blinkend (1–3 Hz) für konfigurierbare Zeit.
-- **C:** Icon C statisch oder blinkend (1–3 Hz) für konfigurierbare Zeit.
-- **D:** Rücksprung zu A.
+## Verhalten
+
+- **A:** Statisches Idle‑Icon (wartet auf Tastendruck)
+- **Tastendruck in A/B/C:**
+  1) Hotkey wird einmalig ausgelöst
+  2) Zyklus startet neu bei **B**
+- **B:** Icon B statisch oder blinkend (1–3 Hz) für einstellbare Zeit
+- **C:** Icon C statisch oder blinkend (1–3 Hz) für einstellbare Zeit
+- Danach Rückkehr zu **A**
+
+## Wichtigste Korrektur
+
+Es werden **keine externen Node‑Pakete** benötigt. Dadurch startet das Plugin ohne `npm install` und vermeidet das gelbe Warnsymbol bei fehlenden Dependencies.
 
 ## Struktur
 
@@ -18,26 +26,16 @@ com.example.bufftimer.sdPlugin/
 └── propertyinspector/
 ```
 
-## Wichtige Hinweise
+## Konfiguration im Property Inspector
 
-1. Die Action ist für `Keypad` Controller hinterlegt (frei auf einer Taste platzierbar).
-2. Hotkey-Senden erfolgt in diesem Prototyp über das optionale Node-Paket `node-key-sender`.
-   - Falls nicht installiert, läuft die State-Logik trotzdem, aber es wird nur eine Warnung geloggt.
-3. Icons sind über den Property Inspector als Pfad (z. B. `images/state-b.svg`) oder Data-URI konfigurierbar.
+- Hotkey (`CTRL+SHIFT+1` etc.)
+- Icon-Pfade für A/B/C
+- Timer B/C in Sekunden
+- Blinken B/C ein/aus
+- Blinkfrequenzen B/C (1–3 Hz)
 
-## Lokales Testen
+## Hotkey-Hinweis
 
-- Plugin-Ordner als `.sdPlugin` Paket in den Stream-Deck-Plugin-Ordner legen.
-- Optional im Plugin-Ordner Dependencies installieren:
-
-```bash
-npm install ws node-key-sender
-```
-
-(Die Datei `package.json` ist absichtlich nicht enthalten, weil die Zielumgebung je nach Setup native Host-Optionen verwenden kann.)
-
-## Nächste sinnvolle Schritte
-
-- Property Inspector auf `sdpi-components` umstellen (komfortablere UI mit Toggles/Slider).
-- Optional Unterstützung für Dial-Feedback ergänzen (z. B. Timer-Restzeit).
-- Für Windows/macOS robuste native Hotkey-Layer statt JS-Dependency integrieren.
+- **Windows:** SendKeys per PowerShell
+- **macOS:** `osascript` / System Events
+- **Linux:** aktuell nur Warn-Log (kein Key-Send implementiert)
