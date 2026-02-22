@@ -3,7 +3,6 @@ let uuid = null;
 let actionInfo = null;
 
 const fields = [
-  'hotkey',
   'iconA',
   'iconB',
   'iconC',
@@ -21,7 +20,6 @@ function send(event, payload = {}) {
 
 function getSettingsFromForm() {
   return {
-    hotkey: document.getElementById('hotkey').value,
     iconA: document.getElementById('iconA').value,
     iconB: document.getElementById('iconB').value,
     iconC: document.getElementById('iconC').value,
@@ -62,11 +60,10 @@ function connectElgatoStreamDeckSocket(inPort, inUUID, inRegisterEvent, inInfo, 
 
   websocket = new WebSocket(`ws://127.0.0.1:${inPort}`);
   websocket.onopen = () => {
-    send(inRegisterEvent, {
-      uuid,
+    websocket.send(JSON.stringify({
       event: inRegisterEvent,
-      info: JSON.parse(inInfo)
-    });
+      uuid
+    }));
 
     send('getSettings', {
       context: actionInfo.context

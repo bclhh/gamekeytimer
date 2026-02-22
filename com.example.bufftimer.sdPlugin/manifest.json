@@ -11,7 +11,7 @@
           "FontSize": "14"
         }
       ],
-      "Tooltip": "Startet einen A->B->C->D Zyklus inkl. Hotkey",
+      "Tooltip": "Anzeige-/Timer-Action für A->B->C->A (für Hotkey mit Multi Action kombinieren)",
       "PropertyInspectorPath": "propertyinspector/index.html",
       "Controllers": [
         "Keypad"

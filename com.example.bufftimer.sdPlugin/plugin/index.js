@@ -1,9 +1,8 @@
+/* global WebSocket */
 /* eslint-disable no-console */
-const { exec } = require('child_process');
 
 const ACTION_UUID = 'com.example.bufftimer.action';
 const DEFAULTS = {
-  hotkey: 'CTRL+SHIFT+1',
   iconA: 'images/state-a.svg',
   iconB: 'images/state-b.svg',
   iconC: 'images/state-c.svg',
@@ -50,81 +49,6 @@ function setImage(ws, context, image) {
 
 function setSettings(ws, context, settings) {
   send(ws, 'setSettings', { context, payload: settings });
-}
-
-function parseHotkey(hotkey) {
-  return hotkey
-    .split('+')
-    .map((part) => part.trim().toLowerCase())
-    .filter(Boolean);
-}
-
-function triggerHotkeyWindows(parts) {
-  if (!parts.length) return;
-
-  const modifierMap = {
-    ctrl: '^',
-    control: '^',
-    shift: '+',
-    alt: '%'
-  };
-
-  const keyMap = {
-    enter: '{ENTER}',
-    tab: '{TAB}',
-    esc: '{ESC}',
-    escape: '{ESC}',
-    space: ' '
-  };
-
-  const modifiers = parts.filter((p) => modifierMap[p]).map((p) => modifierMap[p]).join('');
-  const key = parts.find((p) => !modifierMap[p]) || '';
-  const keyToken = keyMap[key] || key.toUpperCase();
-  const sendKeys = `${modifiers}${keyToken}`;
-
-  const cmd = `powershell -NoProfile -ExecutionPolicy Bypass -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('${sendKeys}')"`;
-  exec(cmd, (error) => {
-    if (error) console.error('Hotkey konnte unter Windows nicht gesendet werden:', error.message);
-  });
-}
-
-function triggerHotkeyMac(parts) {
-  if (!parts.length) return;
-
-  const modifierMap = {
-    ctrl: 'control down',
-    control: 'control down',
-    shift: 'shift down',
-    alt: 'option down',
-    option: 'option down',
-    cmd: 'command down',
-    command: 'command down'
-  };
-
-  const key = parts.find((p) => !modifierMap[p]) || '';
-  const modifiers = parts.filter((p) => modifierMap[p]).map((p) => modifierMap[p]).join(', ');
-  const usingPart = modifiers ? ` using {${modifiers}}` : '';
-  const cmd = `osascript -e 'tell application "System Events" to keystroke "${key}"${usingPart}'`;
-  exec(cmd, (error) => {
-    if (error) console.error('Hotkey konnte unter macOS nicht gesendet werden:', error.message);
-  });
-}
-
-function triggerHotkey(hotkey) {
-  const parts = parseHotkey(hotkey);
-  if (!parts.length) return;
-
-  if (process.platform === 'win32') {
-    triggerHotkeyWindows(parts);
-    return;
-  }
-
-  if (process.platform === 'darwin') {
-    triggerHotkeyMac(parts);
-    return;
-  }
-
-  console.warn(`Hotkey auf Plattform ${process.platform} nicht implementiert.`);
 }
 
 function clearRuntime(entry) {
@@ -175,7 +99,6 @@ function runC(ws, entry) {
 }
 
 function restartCycle(ws, entry) {
-  triggerHotkey(entry.settings.hotkey);
   runB(ws, entry);
 }
 
@@ -224,8 +147,8 @@ function connectElgatoStreamDeckSocket(port, pluginUUID, registerEvent) {
     send(ws, registerEvent, { uuid: pluginUUID });
   };
 
-  ws.onmessage = (raw) => {
-    const message = JSON.parse(raw.data || raw);
+  ws.onmessage = (evt) => {
+    const message = JSON.parse(evt.data);
     if (message.action !== ACTION_UUID) return;
 
     switch (message.event) {
@@ -252,5 +175,5 @@ function connectElgatoStreamDeckSocket(port, pluginUUID, registerEvent) {
   };
 }
 
-const args = parseArgs(process.argv);
+const args = parseArgs(typeof process !== 'undefined' ? process.argv : []);
 connectElgatoStreamDeckSocket(args.port, args.pluginUUID, args.registerEvent);

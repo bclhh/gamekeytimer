@@ -8,13 +8,15 @@
       label { display:block; margin-top:10px; font-size:12px; }
       input { width:100%; padding:6px; margin-top:4px; box-sizing:border-box; }
       .row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-      .hint { color:#9ca3af; font-size:11px; margin-top:2px; }
+      .hint { color:#9ca3af; font-size:11px; margin-top:6px; line-height:1.35; }
+      .panel { background:#1f2937; border-radius:8px; padding:10px; margin-top:10px; }
     </style>
   </head>
   <body>
-    <label>Hotkey (z.B. CTRL+SHIFT+1)
-      <input id="hotkey" type="text" />
-    </label>
+    <div class="panel hint">
+      Diese Action ist eine reine Anzeige-/Timer-Action. Für Tastenkombinationen bitte in Stream Deck
+      eine <strong>Multi Action</strong> verwenden: zuerst <strong>Hotkey</strong>, danach diese Action.
+    </div>
 
     <label>Icon A (Start, statisch)
       <input id="iconA" type="text" />
