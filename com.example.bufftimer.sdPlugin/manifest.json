@@ -1,0 +1,42 @@
+{
+  "Actions": [
+    {
+      "Name": "Buff Timer Key",
+      "UUID": "com.example.bufftimer.action",
+      "Icon": "images/state-a",
+      "States": [
+        {
+          "Image": "images/state-a",
+          "TitleAlignment": "middle",
+          "FontSize": "14"
+        }
+      ],
+      "Tooltip": "Anzeige-/Timer-Action für A->B->C->A (für Hotkey mit Multi Action kombinieren)",
+      "PropertyInspectorPath": "propertyinspector/index.html",
+      "Controllers": [
+        "Keypad"
+      ]
+    }
+  ],
+  "Author": "Codex",
+  "CodePath": "plugin/index.js",
+  "Description": "Bufffood Timer mit frei konfigurierbaren Icons, Timern und Blinkfrequenzen.",
+  "Name": "Buff Timer Key",
+  "Icon": "images/state-a",
+  "URL": "https://example.com",
+  "Version": "1.0.0",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.6"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "12"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ]
+}
